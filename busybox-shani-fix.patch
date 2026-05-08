@@ -1,0 +1,29 @@
+From: Assistant <assistant@local>
+Date: Fri May 8 2026
+Subject: [PATCH] libbb: Fix sha1_end shaNI reference on non-x86 architectures
+
+Busybox 1.37.0's sha1_end() references sha1_process_block64_shaNI under
+#if ENABLE_SHA1_HWACCEL, but the function is only declared when
+__x86_64__ or __i386__ is defined.  This causes build failures when
+cross-compiling for non-x86 targets with a defconfig generated on x86.
+
+Add the missing architecture guard.
+---
+ libbb/hash_md5_sha.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/libbb/hash_md5_sha.c b/libbb/hash_md5_sha.c
+index abc123..def456 100644
+--- a/libbb/hash_md5_sha.c
++++ b/libbb/hash_md5_sha.c
+@@ -1313,8 +1313,10 @@ unsigned FAST_FUNC sha1_end(sha1_ctx_t *ctx, void *resbuf)
+ 
+ 	hash_size = 8;
+ 	if (ctx->process_block == sha1_process_block64
+ #if ENABLE_SHA1_HWACCEL
++# if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+ 	 || ctx->process_block == sha1_process_block64_shaNI
++# endif
+ #endif
+ 	) {
+ 		hash_size = 5;
